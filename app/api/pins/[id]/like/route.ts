@@ -4,12 +4,17 @@ import Notification from '@/models/Notification';
 import Pin from '@/models/Pin';
 import { getServerSession } from 'next-auth';
 import { NextRequest, NextResponse } from 'next/server';
+import { Server as SocketIOServer } from 'socket.io';
+
+// Get global io instance
+const getIO = (): SocketIOServer | null => {
+    return (global as typeof globalThis & { io?: SocketIOServer }).io || null;
+};
 
 interface RouteParams {
     params: Promise<{ id: string }>;
 }
 
-// POST toggle like on pin
 export async function POST(request: NextRequest, { params }: RouteParams) {
     try {
         const session = await getServerSession(authOptions);
@@ -35,7 +40,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             );
         }
 
-        const isLiked = pin.likes.map(id => id.toString()).includes(userId);
+        const isLiked = pin.likes.some((likeId: { toString: () => string }) => likeId.toString() === userId);
 
         if (isLiked) {
             // Unlike
@@ -56,12 +61,22 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             });
             // Create notification (only if not own pin)
             if (pin.creator.toString() !== userId) {
-                await Notification.create({
+                const notification = await Notification.create({
                     sender: userId,
                     recipient: pin.creator,
                     type: 'like',
                     pin: id,
                 });
+
+                // Send real-time notification via WebSocket
+                const io = getIO();
+                if (io) {
+                    io.to(`user:${pin.creator}`).emit('new-notification', {
+                        ...notification.toObject(),
+                        sender: { _id: userId, username: session.user.username },
+                        pin: { _id: id, title: pin.title },
+                    });
+                }
             }
         }
 
@@ -75,9 +90,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             pin: updatedPin,
         });
     } catch (error) {
-        console.error('Error toggling like:', error);
+        console.error('Error liking pin:', error);
         return NextResponse.json(
-            { error: 'Failed to toggle like' },
+            { error: 'Failed to like pin' },
             { status: 500 }
         );
     }

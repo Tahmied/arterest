@@ -64,25 +64,40 @@ function HomeContent() {
       return;
     }
 
-    try {
-      const response = await fetch(`/api/pins/${pinId}/like`, {
-        method: 'POST',
-      });
-      const data = await response.json();
+    const userId = session.user.id;
+    const pin = pins.find((p) => p._id === pinId);
+    const isCurrentlyLiked = pin?.likes?.includes(userId);
 
+    // Optimistic update
+    setPins((prev) =>
+      prev.map((p) =>
+        p._id === pinId
+          ? {
+            ...p,
+            likes: isCurrentlyLiked
+              ? (p.likes || []).filter((id) => id !== userId)
+              : [...(p.likes || []), userId],
+          }
+          : p
+      )
+    );
+
+    try {
+      await fetch(`/api/pins/${pinId}/like`, { method: 'POST' });
+    } catch (error) {
+      // Rollback on error
       setPins((prev) =>
-        prev.map((pin) =>
-          pin._id === pinId
+        prev.map((p) =>
+          p._id === pinId
             ? {
-              ...pin,
-              likes: data.liked
-                ? [...(pin.likes || []), session.user.id]
-                : (pin.likes || []).filter((id) => id !== session.user.id),
+              ...p,
+              likes: isCurrentlyLiked
+                ? [...(p.likes || []), userId]
+                : (p.likes || []).filter((id) => id !== userId),
             }
-            : pin
+            : p
         )
       );
-    } catch (error) {
       console.error('Error liking pin:', error);
     }
   };
@@ -93,25 +108,40 @@ function HomeContent() {
       return;
     }
 
-    try {
-      const response = await fetch(`/api/pins/${pinId}/save`, {
-        method: 'POST',
-      });
-      const data = await response.json();
+    const userId = session.user.id;
+    const pin = pins.find((p) => p._id === pinId);
+    const isCurrentlySaved = pin?.saves?.includes(userId);
 
+    // Optimistic update
+    setPins((prev) =>
+      prev.map((p) =>
+        p._id === pinId
+          ? {
+            ...p,
+            saves: isCurrentlySaved
+              ? (p.saves || []).filter((id) => id !== userId)
+              : [...(p.saves || []), userId],
+          }
+          : p
+      )
+    );
+
+    try {
+      await fetch(`/api/pins/${pinId}/save`, { method: 'POST' });
+    } catch (error) {
+      // Rollback on error
       setPins((prev) =>
-        prev.map((pin) =>
-          pin._id === pinId
+        prev.map((p) =>
+          p._id === pinId
             ? {
-              ...pin,
-              saves: data.saved
-                ? [...(pin.saves || []), session.user.id]
-                : (pin.saves || []).filter((id) => id !== session.user.id),
+              ...p,
+              saves: isCurrentlySaved
+                ? [...(p.saves || []), userId]
+                : (p.saves || []).filter((id) => id !== userId),
             }
-            : pin
+            : p
         )
       );
-    } catch (error) {
       console.error('Error saving pin:', error);
     }
   };

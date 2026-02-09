@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { FiBell, FiHeart, FiMessageCircle, FiUserPlus, FiX } from 'react-icons/fi';
+import { useSocket } from './providers/SocketProvider';
 
 interface Notification {
     _id: string;
@@ -23,12 +24,13 @@ interface Notification {
 }
 
 export default function NotificationBell() {
+    const { socket, isConnected } = useSocket();
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [isOpen, setIsOpen] = useState(false);
     const [loading, setLoading] = useState(false);
 
-    const fetchNotifications = async () => {
+    const fetchNotifications = useCallback(async () => {
         try {
             setLoading(true);
             const response = await fetch('/api/notifications?limit=10');
@@ -42,14 +44,33 @@ export default function NotificationBell() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
+    // Initial fetch
     useEffect(() => {
         fetchNotifications();
-        // Poll for new notifications every 30 seconds
-        const interval = setInterval(fetchNotifications, 30000);
-        return () => clearInterval(interval);
-    }, []);
+    }, [fetchNotifications]);
+
+    // Listen for real-time notifications via WebSocket
+    useEffect(() => {
+        if (!socket || !isConnected) return;
+
+        const handleNewNotification = (notification: Notification) => {
+            setNotifications((prev) => {
+                if (prev.some((n) => n._id === notification._id)) {
+                    return prev;
+                }
+                return [notification, ...prev];
+            });
+            setUnreadCount((prev) => prev + 1);
+        };
+
+        socket.on('new-notification', handleNewNotification);
+
+        return () => {
+            socket.off('new-notification', handleNewNotification);
+        };
+    }, [socket, isConnected]);
 
     const markAllAsRead = async () => {
         try {
@@ -143,7 +164,12 @@ export default function NotificationBell() {
                     <div className="absolute right-0 top-full mt-2 w-80 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-xl z-50 max-h-[400px] overflow-hidden">
                         {/* Header */}
                         <div className="flex items-center justify-between p-4 border-b border-[var(--border)]">
-                            <h3 className="font-semibold">Notifications</h3>
+                            <div className="flex items-center gap-2">
+                                <h3 className="font-semibold">Notifications</h3>
+                                {isConnected && (
+                                    <span className="w-2 h-2 bg-green-500 rounded-full" title="Live" />
+                                )}
+                            </div>
                             <div className="flex items-center gap-2">
                                 {unreadCount > 0 && (
                                     <button

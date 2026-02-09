@@ -4,6 +4,7 @@ import { signOut, useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { FiLogOut, FiMenu, FiPlus, FiSearch, FiUser, FiX } from 'react-icons/fi';
+import ChatButton from './ChatButton';
 import NotificationBell from './NotificationBell';
 
 export default function Header() {
@@ -51,36 +52,36 @@ export default function Header() {
                                     <span>Upload</span>
                                 </Link>
                                 <NotificationBell />
+                                <ChatButton />
                                 <div className="relative group">
                                     <Link
                                         href={`/profile/${session.user.username}`}
                                         className="flex items-center gap-2"
                                     >
-                                        <div className="avatar">
+                                        <div className="w-10 h-10 rounded-full bg-[var(--primary)] flex items-center justify-center text-white font-medium overflow-hidden">
                                             {session.user.avatar ? (
                                                 <img
                                                     src={session.user.avatar}
                                                     alt={session.user.username}
-                                                    className="w-full h-full object-cover rounded-full"
+                                                    className="w-full h-full object-cover"
                                                 />
                                             ) : (
                                                 session.user.username?.charAt(0).toUpperCase()
                                             )}
                                         </div>
-                                        <span className="font-medium">Profile</span>
                                     </Link>
                                     {/* Dropdown */}
                                     <div className="absolute right-0 top-full mt-2 w-48 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                                         <Link
                                             href={`/profile/${session.user.username}`}
-                                            className="flex items-center gap-2 px-4 py-3 hover:bg-[var(--card-hover)] transition-colors"
+                                            className="flex items-center gap-2 px-4 py-3 hover:bg-[var(--card-hover)] transition-colors rounded-t-xl"
                                         >
                                             <FiUser className="w-4 h-4" />
                                             <span>View Profile</span>
                                         </Link>
                                         <button
                                             onClick={() => signOut()}
-                                            className="flex items-center gap-2 px-4 py-3 w-full text-left hover:bg-[var(--card-hover)] text-[var(--destructive)] transition-colors"
+                                            className="flex items-center gap-2 px-4 py-3 w-full text-left hover:bg-[var(--card-hover)] text-[var(--destructive)] transition-colors rounded-b-xl"
                                         >
                                             <FiLogOut className="w-4 h-4" />
                                             <span>Log out</span>
@@ -100,13 +101,41 @@ export default function Header() {
                         )}
                     </nav>
 
-                    {/* Mobile Menu Button */}
-                    <button
-                        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                        className="md:hidden p-2 hover:bg-[var(--secondary)] rounded-full transition-colors"
-                    >
-                        {mobileMenuOpen ? <FiX className="w-6 h-6" /> : <FiMenu className="w-6 h-6" />}
-                    </button>
+                    {/* Mobile Quick Actions */}
+                    <div className="md:hidden flex items-center gap-1">
+                        {status === 'authenticated' && session?.user && (
+                            <>
+                                <Link
+                                    href="/create"
+                                    className="p-2 hover:bg-[var(--secondary)] rounded-full transition-colors"
+                                >
+                                    <FiPlus className="w-5 h-5" />
+                                </Link>
+                                <NotificationBell />
+                                <ChatButton />
+                                <Link
+                                    href={`/profile/${session.user.username}`}
+                                    className="w-8 h-8 rounded-full bg-[var(--primary)] flex items-center justify-center text-white text-sm font-medium overflow-hidden"
+                                >
+                                    {session.user.avatar ? (
+                                        <img
+                                            src={session.user.avatar}
+                                            alt=""
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        session.user.username?.charAt(0).toUpperCase()
+                                    )}
+                                </Link>
+                            </>
+                        )}
+                        <button
+                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                            className="p-2 hover:bg-[var(--secondary)] rounded-full transition-colors"
+                        >
+                            {mobileMenuOpen ? <FiX className="w-6 h-6" /> : <FiMenu className="w-6 h-6" />}
+                        </button>
+                    </div>
                 </div>
 
                 {/* Mobile Search */}
@@ -129,20 +158,12 @@ export default function Header() {
                         {status === 'authenticated' && session?.user ? (
                             <>
                                 <Link
-                                    href="/create"
-                                    className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--secondary)] rounded-xl transition-colors"
-                                    onClick={() => setMobileMenuOpen(false)}
-                                >
-                                    <FiPlus className="w-5 h-5" />
-                                    <span>Upload Pin</span>
-                                </Link>
-                                <Link
                                     href={`/profile/${session.user.username}`}
                                     className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--secondary)] rounded-xl transition-colors"
                                     onClick={() => setMobileMenuOpen(false)}
                                 >
                                     <FiUser className="w-5 h-5" />
-                                    <span>Profile</span>
+                                    <span>My Profile</span>
                                 </Link>
                                 <button
                                     onClick={() => {
