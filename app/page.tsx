@@ -1,65 +1,182 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import CategoryFilter from '@/components/CategoryFilter';
+import MasonryGrid from '@/components/MasonryGrid';
+import PinCard from '@/components/PinCard';
+import { useSession } from 'next-auth/react';
+import { useSearchParams } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useState } from 'react';
+import { FiLoader } from 'react-icons/fi';
+
+interface Pin {
+  _id: string;
+  title: string;
+  imageUrl: string;
+  creator: {
+    _id: string;
+    username: string;
+    avatar?: string;
+  };
+  likes: string[];
+  saves: string[];
+  category: string;
+}
+
+function HomeContent() {
+  const { data: session } = useSession();
+  const searchParams = useSearchParams();
+  const searchQuery = searchParams.get('search') || '';
+
+  const [pins, setPins] = useState<Pin[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState('For You');
+
+  const fetchPins = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (selectedCategory !== 'For You') {
+        params.append('category', selectedCategory);
+      }
+      if (searchQuery) {
+        params.append('search', searchQuery);
+      }
+
+      const response = await fetch(`/api/pins?${params.toString()}`);
+      const data = await response.json();
+      // Filter out pins without valid imageUrl
+      const validPins = (data.pins || []).filter((pin: Pin) => pin.imageUrl && pin.imageUrl.length > 0);
+      setPins(validPins);
+    } catch (error) {
+      console.error('Error fetching pins:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedCategory, searchQuery]);
+
+  useEffect(() => {
+    fetchPins();
+  }, [fetchPins]);
+
+  const handleLike = async (pinId: string) => {
+    if (!session?.user) {
+      window.location.href = '/login';
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/pins/${pinId}/like`, {
+        method: 'POST',
+      });
+      const data = await response.json();
+
+      setPins((prev) =>
+        prev.map((pin) =>
+          pin._id === pinId
+            ? {
+              ...pin,
+              likes: data.liked
+                ? [...(pin.likes || []), session.user.id]
+                : (pin.likes || []).filter((id) => id !== session.user.id),
+            }
+            : pin
+        )
+      );
+    } catch (error) {
+      console.error('Error liking pin:', error);
+    }
+  };
+
+  const handleSave = async (pinId: string) => {
+    if (!session?.user) {
+      window.location.href = '/login';
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/pins/${pinId}/save`, {
+        method: 'POST',
+      });
+      const data = await response.json();
+
+      setPins((prev) =>
+        prev.map((pin) =>
+          pin._id === pinId
+            ? {
+              ...pin,
+              saves: data.saved
+                ? [...(pin.saves || []), session.user.id]
+                : (pin.saves || []).filter((id) => id !== session.user.id),
+            }
+            : pin
+        )
+      );
+    } catch (error) {
+      console.error('Error saving pin:', error);
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="max-w-[1800px] mx-auto px-4 py-6">
+      {/* Category Filter */}
+      <CategoryFilter
+        selectedCategory={selectedCategory}
+        onSelectCategory={setSelectedCategory}
+      />
+
+      {/* Search Results Header */}
+      {searchQuery && (
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold">
+            Search results for &quot;{searchQuery}&quot;
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+        </div>
+      )}
+
+      {/* Loading State */}
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-4">
+          <FiLoader className="w-10 h-10 animate-spin text-[var(--primary)]" />
+          <p className="text-[var(--muted-foreground)]">Loading pins...</p>
+        </div>
+      ) : pins.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-4">
+          <p className="text-xl font-medium">No pins found</p>
+          <p className="text-[var(--muted-foreground)]">
+            {searchQuery
+              ? 'Try a different search term'
+              : 'Be the first to add a pin!'}
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+      ) : (
+        <MasonryGrid>
+          {pins.map((pin) => (
+            <PinCard
+              key={pin._id}
+              pin={pin}
+              onLike={handleLike}
+              onSave={handleSave}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+          ))}
+        </MasonryGrid>
+      )}
     </div>
+  );
+}
+
+function HomeLoading() {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 gap-4">
+      <FiLoader className="w-10 h-10 animate-spin text-[var(--primary)]" />
+      <p className="text-[var(--muted-foreground)]">Loading...</p>
+    </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={<HomeLoading />}>
+      <HomeContent />
+    </Suspense>
   );
 }
