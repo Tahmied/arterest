@@ -4,12 +4,15 @@ import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 import { FiMessageCircle, FiX } from 'react-icons/fi';
 import ChatModal from './chat/ChatModal';
+import { useSocket } from './providers/SocketProvider';
 
 export default function ChatButton() {
     const { data: session } = useSession();
+    const { socket, isConnected } = useSocket();
     const [isOpen, setIsOpen] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
 
+    // Initial fetch of unread count
     useEffect(() => {
         if (!session?.user) return;
 
@@ -30,9 +33,22 @@ export default function ChatButton() {
         };
 
         fetchUnreadCount();
-        const interval = setInterval(fetchUnreadCount, 30000);
-        return () => clearInterval(interval);
     }, [session?.user]);
+
+    // Listen for new messages via WebSocket to update unread badge
+    useEffect(() => {
+        if (!socket || !isConnected) return;
+
+        const handleNewMessage = () => {
+            setUnreadCount((prev) => prev + 1);
+        };
+
+        socket.on('new-message-notification', handleNewMessage);
+
+        return () => {
+            socket.off('new-message-notification', handleNewMessage);
+        };
+    }, [socket, isConnected]);
 
     if (!session?.user) return null;
 

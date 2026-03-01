@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
 
         // Check if conversation already exists
         let conversation = await Conversation.findOne({
-            participants: { $all: [session.user.id, participantId] },
+            participants: { $all: [session.user.id, participantId], $size: 2 },
         }).populate('participants', 'username avatar');
 
         if (!conversation) {

@@ -89,6 +89,11 @@ export default function ChatWindow({ conversation, onMessageSent }: ChatWindowPr
                 return;
             }
 
+            // Ignore message if we are the sender (it's already handled optimistically)
+            if (message.sender._id === session?.user?.id) {
+                return;
+            }
+
             setMessages((prev) => {
                 // Use Map for O(1) lookup and guaranteed uniqueness
                 const messageMap = new Map(prev.map(m => [m._id, m]));
@@ -116,6 +121,9 @@ export default function ChatWindow({ conversation, onMessageSent }: ChatWindowPr
 
         const handleStopTyping = () => {
             setTypingUser(null);
+            if (typingTimeoutRef.current) {
+                clearTimeout(typingTimeoutRef.current);
+            }
         };
 
         socket.on('new-message', handleNewMessage);

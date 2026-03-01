@@ -3,6 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { useCallback, useEffect, useState } from 'react';
 import { FiArrowLeft, FiSearch, FiX } from 'react-icons/fi';
+import { useSocket } from '../providers/SocketProvider';
 import ChatWindow from './ChatWindow';
 
 interface Participant {
@@ -62,6 +63,23 @@ export default function ChatModal({ onClose, onUnreadChange }: ChatModalProps) {
     useEffect(() => {
         fetchConversations();
     }, [fetchConversations]);
+
+    const { socket, isConnected } = useSocket();
+
+    // Refresh conversation list when a new message notification arrives
+    useEffect(() => {
+        if (!socket || !isConnected) return;
+
+        const handleNewMessage = () => {
+            fetchConversations();
+        };
+
+        socket.on('new-message-notification', handleNewMessage);
+
+        return () => {
+            socket.off('new-message-notification', handleNewMessage);
+        };
+    }, [socket, isConnected, fetchConversations]);
 
     const searchUsers = async (query: string) => {
         if (!query.trim()) {
