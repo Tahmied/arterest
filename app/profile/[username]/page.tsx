@@ -141,25 +141,31 @@ export default function ProfilePage({ params }: PageProps) {
             return;
         }
 
+        const applyUpdate = (prevPins: Pin[], liked: boolean) =>
+            prevPins.map((pin) =>
+                pin._id === pinId
+                    ? {
+                        ...pin,
+                        likes: liked
+                            ? (pin.likes || []).filter((id) => id !== userId)
+                            : [...(pin.likes || []), userId!],
+                    }
+                    : pin
+            );
+
+        const pin = pins.find((p) => p._id === pinId) ?? savedPins.find((p) => p._id === pinId);
+        const wasLiked = pin?.likes?.includes(userId!) ?? false;
+
+        // Optimistic update
+        setPins((prev) => applyUpdate(prev, wasLiked));
+        setSavedPins((prev) => applyUpdate(prev, wasLiked));
+
         try {
-            const response = await fetch(`/api/pins/${pinId}/like`, { method: 'POST' });
-            const data = await response.json();
-
-            const updatePins = (prevPins: Pin[]) =>
-                prevPins.map((pin) =>
-                    pin._id === pinId
-                        ? {
-                            ...pin,
-                            likes: data.liked
-                                ? [...(pin.likes || []), userId!]
-                                : (pin.likes || []).filter((id) => id !== userId),
-                        }
-                        : pin
-                );
-
-            setPins(updatePins);
-            setSavedPins(updatePins);
+            await fetch(`/api/pins/${pinId}/like`, { method: 'POST' });
         } catch (error) {
+            // Rollback
+            setPins((prev) => applyUpdate(prev, !wasLiked));
+            setSavedPins((prev) => applyUpdate(prev, !wasLiked));
             console.error('Error liking pin:', error);
         }
     };
@@ -170,25 +176,31 @@ export default function ProfilePage({ params }: PageProps) {
             return;
         }
 
+        const applyUpdate = (prevPins: Pin[], saved: boolean) =>
+            prevPins.map((pin) =>
+                pin._id === pinId
+                    ? {
+                        ...pin,
+                        saves: saved
+                            ? (pin.saves || []).filter((id) => id !== userId)
+                            : [...(pin.saves || []), userId!],
+                    }
+                    : pin
+            );
+
+        const pin = pins.find((p) => p._id === pinId) ?? savedPins.find((p) => p._id === pinId);
+        const wasSaved = pin?.saves?.includes(userId!) ?? false;
+
+        // Optimistic update
+        setPins((prev) => applyUpdate(prev, wasSaved));
+        setSavedPins((prev) => applyUpdate(prev, wasSaved));
+
         try {
-            const response = await fetch(`/api/pins/${pinId}/save`, { method: 'POST' });
-            const data = await response.json();
-
-            const updatePins = (prevPins: Pin[]) =>
-                prevPins.map((pin) =>
-                    pin._id === pinId
-                        ? {
-                            ...pin,
-                            saves: data.saved
-                                ? [...(pin.saves || []), userId!]
-                                : (pin.saves || []).filter((id) => id !== userId),
-                        }
-                        : pin
-                );
-
-            setPins(updatePins);
-            setSavedPins(updatePins);
+            await fetch(`/api/pins/${pinId}/save`, { method: 'POST' });
         } catch (error) {
+            // Rollback
+            setPins((prev) => applyUpdate(prev, !wasSaved));
+            setSavedPins((prev) => applyUpdate(prev, !wasSaved));
             console.error('Error saving pin:', error);
         }
     };

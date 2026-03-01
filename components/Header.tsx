@@ -2,6 +2,7 @@
 
 import { signOut, useSession } from 'next-auth/react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { FiLogOut, FiMenu, FiPlus, FiSearch, FiUser, FiX } from 'react-icons/fi';
 import ChatButton from './ChatButton';
@@ -9,13 +10,14 @@ import NotificationBell from './NotificationBell';
 
 export default function Header() {
     const { data: session, status } = useSession();
+    const router = useRouter();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         if (searchQuery.trim()) {
-            window.location.href = `/?search=${encodeURIComponent(searchQuery)}`;
+            router.push(`/?search=${encodeURIComponent(searchQuery)}`);
         }
     };
 

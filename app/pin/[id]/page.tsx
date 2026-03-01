@@ -103,20 +103,35 @@ export default function PinDetailPage({ params }: PageProps) {
             return;
         }
 
+        if (!pin) return;
+        const wasLiked = isLiked;
+
+        // Optimistic update — instant feedback
+        setPin((prev) =>
+            prev
+                ? {
+                    ...prev,
+                    likes: wasLiked
+                        ? prev.likes.filter((lid) => lid !== userId)
+                        : [...prev.likes, userId!],
+                }
+                : null
+        );
+
         try {
-            const response = await fetch(`/api/pins/${id}/like`, { method: 'POST' });
-            const data = await response.json();
+            await fetch(`/api/pins/${id}/like`, { method: 'POST' });
+        } catch (error) {
+            // Rollback on error
             setPin((prev) =>
                 prev
                     ? {
                         ...prev,
-                        likes: data.liked
+                        likes: wasLiked
                             ? [...prev.likes, userId!]
                             : prev.likes.filter((lid) => lid !== userId),
                     }
                     : null
             );
-        } catch (error) {
             console.error('Error liking pin:', error);
         }
     };
@@ -127,20 +142,35 @@ export default function PinDetailPage({ params }: PageProps) {
             return;
         }
 
+        if (!pin) return;
+        const wasSaved = isSaved;
+
+        // Optimistic update — instant feedback
+        setPin((prev) =>
+            prev
+                ? {
+                    ...prev,
+                    saves: wasSaved
+                        ? prev.saves.filter((sid) => sid !== userId)
+                        : [...prev.saves, userId!],
+                }
+                : null
+        );
+
         try {
-            const response = await fetch(`/api/pins/${id}/save`, { method: 'POST' });
-            const data = await response.json();
+            await fetch(`/api/pins/${id}/save`, { method: 'POST' });
+        } catch (error) {
+            // Rollback on error
             setPin((prev) =>
                 prev
                     ? {
                         ...prev,
-                        saves: data.saved
+                        saves: wasSaved
                             ? [...prev.saves, userId!]
                             : prev.saves.filter((sid) => sid !== userId),
                     }
                     : null
             );
-        } catch (error) {
             console.error('Error saving pin:', error);
         }
     };

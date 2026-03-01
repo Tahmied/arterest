@@ -103,10 +103,15 @@ export default function ChatModal({ onClose, onUnreadChange }: ChatModalProps) {
     };
 
     useEffect(() => {
+        if (!searchQuery.trim()) {
+            setSearchResults([]);
+            return;
+        }
         const debounce = setTimeout(() => {
             searchUsers(searchQuery);
         }, 300);
         return () => clearTimeout(debounce);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchQuery]);
 
     const startConversation = async (participant: Participant) => {

@@ -52,10 +52,18 @@ export default function ChatButton() {
 
     if (!session?.user) return null;
 
+    const handleOpen = () => {
+        if (!isOpen) {
+            // Immediately clear badge when user opens chat
+            setUnreadCount(0);
+        }
+        setIsOpen(!isOpen);
+    };
+
     return (
         <>
             <button
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={handleOpen}
                 className="relative p-2 hover:bg-[var(--secondary)] rounded-full transition-colors"
             >
                 {isOpen ? (
